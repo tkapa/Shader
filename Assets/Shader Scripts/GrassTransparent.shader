@@ -1,11 +1,12 @@
-﻿// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+﻿// Unity built-in shader source. Copyright (c) 2016 Unity Technologies. MIT license (see license.txt)
 
-// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+// Unlit alpha-blended shader.
+// - no lighting
+// - no lightmap support
+// - no per-material color
 
-Shader "Unlit/Grass"
-{
-	Properties
-	{
+Shader "Unlit/Transparent Grass" {
+Properties {
 		_MainTex ("Texture", 2D) = "white" {}
 		_NoiseTex("Wind noise Texture", 2D) = "white" {}
 
@@ -18,37 +19,36 @@ Shader "Unlit/Grass"
 		//Parameters for player/grass interactions
 		_PlayerPosition("Player's Position", Vector) = (0,0,0,0)
 		_PlayerRadius("Player Radius", Range(0, 3)) = 1.0
-	}
-	SubShader
-	{
-		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
-		LOD 100
+}
 
-		Pass
-		{
-			CGPROGRAM
-			#pragma vertex vert
-			#pragma fragment frag
-			#pragma target 2.0
-			// make fog work
-			#pragma multi_compile_fog
-			
-			#include "UnityCG.cginc"
+SubShader {
+    Tags {"Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent"}
+    LOD 100
 
-			struct appdata
-			{
-				float4 vertex : POSITION;
-				float2 uv : TEXCOORD0;
-				UNITY_VERTEX_INPUT_INSTANCE_ID
-			};
+    ZWrite Off
+    Blend SrcAlpha OneMinusSrcAlpha
 
-			struct v2f
-			{
-				float2 uv : TEXCOORD0;
-				UNITY_FOG_COORDS(1)
-				float4 vertex : SV_POSITION;
-				UNITY_VERTEX_OUTPUT_STEREO
-			};
+    Pass {
+        CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 2.0
+            #pragma multi_compile_fog
+
+            #include "UnityCG.cginc"
+
+            struct appdata_t {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct v2f {
+                float4 vertex : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                UNITY_FOG_COORDS(1)
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
 
 			sampler2D _NoiseTex;
 			sampler2D _MainTex;
@@ -63,9 +63,9 @@ Shader "Unlit/Grass"
 			float4 _PlayerPosition;
 			float _PlayerRadius;
 
-			v2f vert (appdata v)
-			{
-				//Position of this origin in the world
+            v2f vert (appdata_t v)
+            {
+            	//Position of this origin in the world
 				float4 worldPosition = mul(unity_ObjectToWorld, float4(0,0,0,1));
 				
 				//Distance from origin to the Player
@@ -93,25 +93,23 @@ Shader "Unlit/Grass"
 				//Add on to the X and Z
 				v.vertex.xz += v.uv.y * movement * 2;
 
-				//Default
-				v2f o;
-				UNITY_SETUP_INSTANCE_ID(v);
+                v2f o;
+                UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				UNITY_TRANSFER_FOG(o,o.vertex);
-				return o;
-			}
-			
-			fixed4 frag (v2f i) : SV_Target
-			{
-				// sample the texture
-				fixed4 col = tex2D(_MainTex, i.uv);
-				// apply fog
-				UNITY_APPLY_FOG(i.fogCoord, col);
-				return col;
-			}
-			ENDCG
-		}
-	}
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                UNITY_TRANSFER_FOG(o,o.vertex);
+                return o;
+            }
+
+            fixed4 frag (v2f i) : SV_Target
+            {
+                fixed4 col = tex2D(_MainTex, i.uv);
+                UNITY_APPLY_FOG(i.fogCoord, col);
+                return col;
+            }
+        ENDCG
+    }
+}
+
 }
